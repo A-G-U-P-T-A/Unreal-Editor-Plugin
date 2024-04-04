@@ -5,18 +5,24 @@
 #include "CoreMinimal.h"
 #include "Modules/ModuleManager.h"
 
+class FToolBarBuilder;
+class FMenuBuilder;
+
 class FAssetAutoArrangerModule : public IModuleInterface
 {
 public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+	void RegisterSettings();
 
-	void CreateAutomationButton();
+	void UnregisterSettings();
+	void PluginButtonClicked();
+    
+private:
+	void RegisterMenus();
+	void AddToolbarButton(FToolBarBuilder& Builder);
+	void OnButtonClicked();
 
 private:
-	static void RegisterSettings();
-	static void UnregisterSettings();
-	void OnButtonClicked();
-	void AddToolbarButton(FToolBarBuilder& Builder);
 	TSharedPtr<class FUICommandList> PluginCommands;
 };

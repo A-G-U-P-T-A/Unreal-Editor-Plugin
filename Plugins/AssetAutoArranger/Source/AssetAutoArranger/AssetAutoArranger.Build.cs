@@ -7,43 +7,51 @@ public class AssetAutoArranger : ModuleRules
 	public AssetAutoArranger(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
+        
 		PublicIncludePaths.AddRange(
 			new string[] {
-				// ... add public include paths required here ...
+				"Editor/ContentBrowser/Public",
+				// ... add public include paths required by your module ...
 			}
-			);
-				
-		
+		);
+        
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				// ... add other private include paths required here ...
+				"AssetAutoArranger/Private",
 			}
-			);
-			
-		
+		);
+        
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
-				"AssetRegistry",
-				"AssetTools",
-				// ... add other public dependencies that you statically link with here ...
 			}
-			);
-			
-		
+		);
+        
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"Projects",
+				"InputCore",
+				"EditorFramework",
+				"UnrealEd",
+				"ToolMenus",
 				"CoreUObject",
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"AssetRegistry",
+				"WorkspaceMenuStructure",
+				"ContentBrowser"
+				// ... add private dependencies that you statically link with here ...
 			}
-			);
-		
-		
-		DynamicallyLoadedModuleNames.AddRange(new string[] { });
+		);
+        
+		DynamicallyLoadedModuleNames.AddRange(
+			new string[]
+			{
+				// ... add any modules that your module loads dynamically here ...
+			}
+		);
 	}
 }

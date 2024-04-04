@@ -1,10 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-// Copyright Epic Games, Inc. All Rights Reserved.
-
-
 #include "AssetAutoArranger.h"
 #include "AssetAutoArrangerSettings.h"
+#include "AssetAutoArrangerCommands.h"
+#include "AssetAutoArrangerStyle.h"
 #include "AssetViewUtils.h"
 #include "ISettingsModule.h"
 #include "Modules/ModuleManager.h"
@@ -17,25 +16,36 @@
 #include "PropertyEditorModule.h"
 #include "Misc/FileHelper.h"
 #include "HAL/PlatformFilemanager.h"
-#include "Widgets/Input/SButton.h"
-#include "Widgets/Layout/SBox.h"
-#include "Widgets/SBoxPanel.h"
-#include "Widgets/Text/STextBlock.h"
-#include "Misc/FileHelper.h"
-#include "HAL/PlatformFilemanager.h"
-#include "LevelEditor.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 #define LOCTEXT_NAMESPACE "FAssetAutoArrangerModule"
 
 void FAssetAutoArrangerModule::StartupModule()
 {
+    FAssetAutoArrangerStyle::Initialize();
+    FAssetAutoArrangerStyle::ReloadTextures();
+
+    FAssetAutoArrangerCommands::Register();
+    
+    PluginCommands = MakeShareable(new FUICommandList);
+    PluginCommands->MapAction(
+        FAssetAutoArrangerCommands::Get().PluginAction,
+        FExecuteAction::CreateRaw(this, &FAssetAutoArrangerModule::PluginButtonClicked),
+        FCanExecuteAction());
+
+    UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FAssetAutoArrangerModule::RegisterMenus));
+    
     RegisterSettings();
-    CreateAutomationButton();
 }
 
 void FAssetAutoArrangerModule::ShutdownModule()
 {
+    UToolMenus::UnRegisterStartupCallback(this);
+    UToolMenus::UnregisterOwner(this);
+    
+    FAssetAutoArrangerCommands::Unregister();
+    FAssetAutoArrangerStyle::Shutdown();
+    
     UnregisterSettings();
 }
 
@@ -60,26 +70,33 @@ void FAssetAutoArrangerModule::UnregisterSettings()
     }
 }
 
-void FAssetAutoArrangerModule::CreateAutomationButton()
+void FAssetAutoArrangerModule::PluginButtonClicked()
 {
-    PluginCommands = MakeShareable(new FUICommandList);
+    OnButtonClicked();
+}
 
-    FLevelEditorModule& LevelEditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+void FAssetAutoArrangerModule::RegisterMenus()
+{
+    FToolMenuOwnerScoped OwnerScoped(this);
 
-    TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-    ToolbarExtender->AddToolBarExtension("Settings", EExtensionHook::After, PluginCommands, FToolBarExtensionDelegate::CreateRaw(this, &FAssetAutoArrangerModule::AddToolbarButton));
-
-    LevelEditorModule.GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
+    UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+    {
+        FToolMenuSection& Section = ToolbarMenu->FindOrAddSection("Settings");
+        {
+            FToolMenuEntry& Entry = Section.AddEntry(FToolMenuEntry::InitToolBarButton(FAssetAutoArrangerCommands::Get().PluginAction));
+            Entry.SetCommandList(PluginCommands);
+        }
+    }
 }
 
 void FAssetAutoArrangerModule::AddToolbarButton(FToolBarBuilder& Builder)
 {
     Builder.AddToolBarButton(
-        FUIAction(FExecuteAction::CreateRaw(this, &FAssetAutoArrangerModule::OnButtonClicked)),
+        FAssetAutoArrangerCommands::Get().PluginAction,
         NAME_None,
         LOCTEXT("AutoArrangeButton_Label", "Auto Arrange Assets"),
         LOCTEXT("AutoArrangeButton_Tooltip", "Auto arrange assets based on class types"),
-        FSlateIcon()
+        FSlateIcon(FAssetAutoArrangerStyle::GetStyleSetName(), "AssetAutoArranger.PluginAction")
     );
 }
 
@@ -122,10 +139,9 @@ void FAssetAutoArrangerModule::OnButtonClicked()
                     if (ClassFolderPath.FolderColor != FColor::Black)
                     {
                         FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
-                        AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
+                        //AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
                     }
                 }
-
                 break;
             }
         }
