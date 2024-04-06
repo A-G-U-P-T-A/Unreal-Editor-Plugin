@@ -3,9 +3,14 @@
 #include "AssetAutoArrange.h"
 #include "AssetAutoArrangeStyle.h"
 #include "AssetAutoArrangeCommands.h"
+#include "AssetAutoArrangeSettings.h"
+#include "AssetViewUtils.h"
+#include "ISettingsModule.h"
 #include "Misc/MessageDialog.h"
 #include "ToolMenus.h"
+#include "AssetRegistry/AssetRegistryModule.h"
 
+struct FClassFolderPath;
 static const FName AssetAutoArrangeTabName("AssetAutoArrange");
 
 #define LOCTEXT_NAMESPACE "FAssetAutoArrangeModule"
@@ -13,7 +18,8 @@ static const FName AssetAutoArrangeTabName("AssetAutoArrange");
 void FAssetAutoArrangeModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	
+	RegisterSettings();
+
 	FAssetAutoArrangeStyle::Initialize();
 	FAssetAutoArrangeStyle::ReloadTextures();
 
@@ -31,9 +37,8 @@ void FAssetAutoArrangeModule::StartupModule()
 
 void FAssetAutoArrangeModule::ShutdownModule()
 {
-	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
-	// we call this function before unloading the module.
-
+	UnregisterSettings();
+	
 	UToolMenus::UnRegisterStartupCallback(this);
 
 	UToolMenus::UnregisterOwner(this);
@@ -46,12 +51,62 @@ void FAssetAutoArrangeModule::ShutdownModule()
 void FAssetAutoArrangeModule::PluginButtonClicked()
 {
 	// Put your "OnButtonClicked" stuff here
-	FText DialogText = FText::Format(
-							LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
-							FText::FromString(TEXT("FAssetAutoArrangeModule::PluginButtonClicked()")),
-							FText::FromString(TEXT("AssetAutoArrange.cpp"))
-					   );
-	FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+	// const FText DialogText = FText::Format(
+	// 						LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
+	// 						FText::FromString(TEXT("FAssetAutoArrangeModule::PluginButtonClicked()")),
+	// 						FText::FromString(TEXT("AssetAutoArrange.cpp"))
+	// 				   );
+	// FMessageDialog::Open(EAppMsgType::Ok, DialogText);
+	OnButtonClicked();
+}
+
+void FAssetAutoArrangeModule::OnButtonClicked()
+{
+    UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
+
+    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+    IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+    TArray<FAssetData> AssetDataList;
+    AssetRegistry.GetAllAssets(AssetDataList);
+
+    for (const FAssetData& AssetData : AssetDataList)
+    {
+        UClass* AssetClass = AssetData.GetClass();
+
+        for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
+        {
+            if (AssetClass->IsChildOf(ClassFolderPath.ClassType))
+            {
+                FString DestinationFolder = FPaths::ProjectContentDir() / ClassFolderPath.FolderPath;
+                FString SourceFilename = AssetData.GetObjectPathString();
+                FString DestinationFilename = DestinationFolder / FPaths::GetCleanFilename(SourceFilename);
+
+                // Create the destination folder if it doesn't exist
+                IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+                if (!PlatformFile.DirectoryExists(*DestinationFolder))
+                {
+                    PlatformFile.CreateDirectory(*DestinationFolder);
+                }
+
+                // Move the asset file to the destination folder
+                if (IFileManager::Get().Move(*DestinationFilename, *SourceFilename))
+                {
+                    // Update the asset registry
+                    FAssetRegistryModule::AssetRenamed(AssetData.GetAsset(), DestinationFilename);
+
+                    // Set the folder color if specified
+                    if (ClassFolderPath.FolderColor != FColor::Black)
+                    {
+                        FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
+                        //AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
+                    }
+                }
+
+                break;
+            }
+        }
+    }
 }
 
 void FAssetAutoArrangeModule::RegisterMenus()
@@ -76,6 +131,27 @@ void FAssetAutoArrangeModule::RegisterMenus()
 				Entry.SetCommandList(PluginCommands);
 			}
 		}
+	}
+}
+
+void FAssetAutoArrangeModule::RegisterSettings()
+{
+	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+	{
+		UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
+
+		SettingsModule->RegisterSettings("Project", "Plugins", "AssetAutoArranger",
+			LOCTEXT("AssetAutoArrangerSettingsName", "Asset Auto Arranger"),
+			LOCTEXT("AssetAutoArrangerSettingsDescription", "Configure the Asset Auto Arranger plugin settings."),
+			Settings);
+	}
+}
+
+void FAssetAutoArrangeModule::UnregisterSettings()
+{
+	if (ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings"))
+	{
+		SettingsModule->UnregisterSettings("Project", "Plugins", "AssetAutoArranger");
 	}
 }
 

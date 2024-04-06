@@ -22,8 +22,9 @@ public:
 private:
 
 	void RegisterMenus();
-
-
 private:
+	static void RegisterSettings();
+	static void UnregisterSettings();
+	void OnButtonClicked();
 	TSharedPtr<class FUICommandList> PluginCommands;
 };
