@@ -25,6 +25,6 @@ private:
 private:
 	static void RegisterSettings();
 	static void UnregisterSettings();
-	static void OnButtonClicked();
+	void OnButtonClicked();
 	TSharedPtr<class FUICommandList> PluginCommands;
 };

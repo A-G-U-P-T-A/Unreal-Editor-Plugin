@@ -57,11 +57,21 @@ void FAssetAutoArrangeModule::OnButtonClicked()
 {
     UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
 
-    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-    IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+    UE_LOG(LogTemp, Warning, TEXT("Asset Auto-Arrange Settings:"));
+    for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Class: %s, Folder: %s, Color: %s"),
+            *ClassFolderPath.ClassType->GetName(),
+            *ClassFolderPath.FolderPath,
+            *ClassFolderPath.FolderColor.ToString());
+    }
+
+    const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+    const IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
 
     TArray<FAssetData> AssetDataList;
-    AssetRegistry.GetAllAssets(AssetDataList);
+    const FString ProjectContentDir = FPaths::ProjectContentDir();
+    AssetRegistry.GetAssetsByPath(FName(*ProjectContentDir), AssetDataList, true, false);
 
     UE_LOG(LogTemp, Warning, TEXT("OnButtonClicked called. Total assets: %d"), AssetDataList.Num());
 
@@ -74,7 +84,7 @@ void FAssetAutoArrangeModule::OnButtonClicked()
             continue;
         }
 
-        UClass* AssetClass = AssetData.GetClass();
+        const UClass* AssetClass = AssetData.GetClass();
 
         UE_LOG(LogTemp, Warning, TEXT("Processing asset: %s (Class: %s)"), *AssetData.GetFullName(), *AssetClass->GetName());
 
@@ -82,8 +92,8 @@ void FAssetAutoArrangeModule::OnButtonClicked()
         {
             if (AssetClass->IsChildOf(ClassFolderPath.ClassType))
             {
-                FString DestinationFolder = FPaths::ProjectContentDir() / ClassFolderPath.FolderPath;
-                FString SourceFilename = AssetData.GetObjectPathString();
+                FString DestinationFolder = ProjectContentDir / ClassFolderPath.FolderPath;
+                FString SourceFilename = AssetData.ObjectPath.ToString();
                 FString DestinationFilename = DestinationFolder / FPaths::GetCleanFilename(SourceFilename);
 
                 UE_LOG(LogTemp, Warning, TEXT("Moving asset to folder: %s"), *DestinationFolder);
