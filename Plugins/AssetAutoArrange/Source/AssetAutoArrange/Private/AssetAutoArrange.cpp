@@ -65,25 +65,23 @@ void FAssetAutoArrangeModule::OnButtonClicked()
 			*ClassFolderPath.FolderPath,
 			*ClassFolderPath.FolderColor.ToString());
 
-		FString DestinationFolder = FPaths::ProjectContentDir() / ClassFolderPath.FolderPath;
+		FString DestinationFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ClassFolderPath.FolderPath);
 
-
-		// Setting the folder color if specified
 		if (ClassFolderPath.FolderColor != FColor::Black)
 		{
 			FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
 			AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
-			
-            
+
+			// Save the color information to the config file
+			GConfig->SetString(TEXT("PathColor"), *DestinationFolder, *LinearColor.ToString(), GEditorPerProjectIni);
+
 			// Print the original color and the linear color
 			UE_LOG(LogTemp, Warning, TEXT("Set color for directory: %s, Original Color: %s, Linear Color: %s"),
 				*DestinationFolder,
 				*ClassFolderPath.FolderColor.ToString(),
 				*LinearColor.ToString());
-
-			//GConfig->SetString(TEXT("PathColor"), *DestinationFolder, *LinearColor.ToString(), GEditorPerProjectIni);
 		}
-		
+
 		// Create the destination folder if it doesn't exist
 		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 		if (!PlatformFile.DirectoryExists(*DestinationFolder))
@@ -95,12 +93,10 @@ void FAssetAutoArrangeModule::OnButtonClicked()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Directory already exists: %s"), *DestinationFolder);
 		}
-
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
 }
-
 
 
 

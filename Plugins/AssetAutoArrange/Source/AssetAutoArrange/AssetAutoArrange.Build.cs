@@ -26,7 +26,6 @@ public class AssetAutoArrange : ModuleRules
 			new string[]
 			{
 				"Core",
-				// ... add other public dependencies that you statically link with here ...
 			}
 			);
 			
@@ -45,7 +44,6 @@ public class AssetAutoArrange : ModuleRules
 				"SlateCore",
 				"ContentBrowser",
 				"AssetTools"
-				// ... add private dependencies that you statically link with here ...	
 			}
 			);
 		

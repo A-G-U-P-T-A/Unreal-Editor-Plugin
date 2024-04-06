@@ -18,7 +18,7 @@
 		{
 			"Name": "AssetAutoArrange",
 			"Type": "Editor",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreLoadingScreen"
 		}
 	]
 }
