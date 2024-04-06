@@ -50,13 +50,6 @@ void FAssetAutoArrangeModule::ShutdownModule()
 
 void FAssetAutoArrangeModule::PluginButtonClicked()
 {
-	// Put your "OnButtonClicked" stuff here
-	// const FText DialogText = FText::Format(
-	// 						LOCTEXT("PluginButtonDialogText", "Add code to {0} in {1} to override this button's actions"),
-	// 						FText::FromString(TEXT("FAssetAutoArrangeModule::PluginButtonClicked()")),
-	// 						FText::FromString(TEXT("AssetAutoArrange.cpp"))
-	// 				   );
-	// FMessageDialog::Open(EAppMsgType::Ok, DialogText);
 	OnButtonClicked();
 }
 
