@@ -55,81 +55,54 @@ void FAssetAutoArrangeModule::PluginButtonClicked()
 
 void FAssetAutoArrangeModule::OnButtonClicked()
 {
-    UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
+	UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
 
-    UE_LOG(LogTemp, Warning, TEXT("Asset Auto-Arrange Settings:"));
-    for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Class: %s, Folder: %s, Color: %s"),
-            *ClassFolderPath.ClassType->GetName(),
-            *ClassFolderPath.FolderPath,
-            *ClassFolderPath.FolderColor.ToString());
-    }
+	UE_LOG(LogTemp, Warning, TEXT("Asset Auto-Arrange Settings:"));
+	for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Class: %s, Folder: %s, Color: %s"),
+			*ClassFolderPath.ClassType->GetName(),
+			*ClassFolderPath.FolderPath,
+			*ClassFolderPath.FolderColor.ToString());
 
-    const FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-    const IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+		FString DestinationFolder = FPaths::ProjectContentDir() / ClassFolderPath.FolderPath;
 
-    TArray<FAssetData> AssetDataList;
-    const FString ProjectContentDir = FPaths::ProjectContentDir();
-    AssetRegistry.GetAssetsByPath(FName(*ProjectContentDir), AssetDataList, true, false);
 
-    UE_LOG(LogTemp, Warning, TEXT("OnButtonClicked called. Total assets: %d"), AssetDataList.Num());
+		// Setting the folder color if specified
+		if (ClassFolderPath.FolderColor != FColor::Black)
+		{
+			FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
+			AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
+			
+            
+			// Print the original color and the linear color
+			UE_LOG(LogTemp, Warning, TEXT("Set color for directory: %s, Original Color: %s, Linear Color: %s"),
+				*DestinationFolder,
+				*ClassFolderPath.FolderColor.ToString(),
+				*LinearColor.ToString());
 
-    for (const FAssetData& AssetData : AssetDataList)
-    {
-        if (AssetData.AssetClass == UWorld::StaticClass()->GetFName())
-        {
-            // Skip world objects
-            UE_LOG(LogTemp, Warning, TEXT("Skipping world object: %s"), *AssetData.GetFullName());
-            continue;
-        }
+			//GConfig->SetString(TEXT("PathColor"), *DestinationFolder, *LinearColor.ToString(), GEditorPerProjectIni);
+		}
+		
+		// Create the destination folder if it doesn't exist
+		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+		if (!PlatformFile.DirectoryExists(*DestinationFolder))
+		{
+			PlatformFile.CreateDirectoryTree(*DestinationFolder);
+			UE_LOG(LogTemp, Warning, TEXT("Created directory: %s"), *DestinationFolder);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Directory already exists: %s"), *DestinationFolder);
+		}
 
-        const UClass* AssetClass = AssetData.GetClass();
+	}
 
-        UE_LOG(LogTemp, Warning, TEXT("Processing asset: %s (Class: %s)"), *AssetData.GetFullName(), *AssetClass->GetName());
-
-        for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
-        {
-            if (AssetClass->IsChildOf(ClassFolderPath.ClassType))
-            {
-                FString DestinationFolder = ProjectContentDir / ClassFolderPath.FolderPath;
-                FString SourceFilename = AssetData.ObjectPath.ToString();
-                FString DestinationFilename = DestinationFolder / FPaths::GetCleanFilename(SourceFilename);
-
-                UE_LOG(LogTemp, Warning, TEXT("Moving asset to folder: %s"), *DestinationFolder);
-
-                // Create the destination folder if it doesn't exist
-                IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-                if (!PlatformFile.DirectoryExists(*DestinationFolder))
-                {
-                    PlatformFile.CreateDirectory(*DestinationFolder);
-                }
-
-                // Move the asset file to the destination folder
-                if (IFileManager::Get().Move(*DestinationFilename, *SourceFilename))
-                {
-                    // Update the asset registry
-                    FAssetRegistryModule::AssetRenamed(AssetData.GetAsset(), DestinationFilename);
-
-                    // Set the folder color if specified
-                    if (ClassFolderPath.FolderColor != FColor::Black)
-                    {
-                        FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
-                        AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
-                    }
-                }
-                else
-                {
-                    UE_LOG(LogTemp, Error, TEXT("Failed to move asset: %s"), *AssetData.GetFullName());
-                }
-
-                break;
-            }
-        }
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
+	UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
 }
+
+
+
 
 void FAssetAutoArrangeModule::RegisterMenus()
 {
