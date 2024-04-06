@@ -43,6 +43,8 @@ public class AssetAutoArrange : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"ContentBrowser",
+				"AssetTools"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

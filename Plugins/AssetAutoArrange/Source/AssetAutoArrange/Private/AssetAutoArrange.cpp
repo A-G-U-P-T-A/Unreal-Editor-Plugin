@@ -63,9 +63,20 @@ void FAssetAutoArrangeModule::OnButtonClicked()
     TArray<FAssetData> AssetDataList;
     AssetRegistry.GetAllAssets(AssetDataList);
 
+    UE_LOG(LogTemp, Warning, TEXT("OnButtonClicked called. Total assets: %d"), AssetDataList.Num());
+
     for (const FAssetData& AssetData : AssetDataList)
     {
+        if (AssetData.AssetClass == UWorld::StaticClass()->GetFName())
+        {
+            // Skip world objects
+            UE_LOG(LogTemp, Warning, TEXT("Skipping world object: %s"), *AssetData.GetFullName());
+            continue;
+        }
+
         UClass* AssetClass = AssetData.GetClass();
+
+        UE_LOG(LogTemp, Warning, TEXT("Processing asset: %s (Class: %s)"), *AssetData.GetFullName(), *AssetClass->GetName());
 
         for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
         {
@@ -74,6 +85,8 @@ void FAssetAutoArrangeModule::OnButtonClicked()
                 FString DestinationFolder = FPaths::ProjectContentDir() / ClassFolderPath.FolderPath;
                 FString SourceFilename = AssetData.GetObjectPathString();
                 FString DestinationFilename = DestinationFolder / FPaths::GetCleanFilename(SourceFilename);
+
+                UE_LOG(LogTemp, Warning, TEXT("Moving asset to folder: %s"), *DestinationFolder);
 
                 // Create the destination folder if it doesn't exist
                 IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
@@ -92,14 +105,20 @@ void FAssetAutoArrangeModule::OnButtonClicked()
                     if (ClassFolderPath.FolderColor != FColor::Black)
                     {
                         FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
-                        //AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
+                        AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
                     }
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Error, TEXT("Failed to move asset: %s"), *AssetData.GetFullName());
                 }
 
                 break;
             }
         }
     }
+
+    UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
 }
 
 void FAssetAutoArrangeModule::RegisterMenus()
