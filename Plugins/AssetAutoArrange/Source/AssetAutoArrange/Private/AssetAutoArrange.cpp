@@ -55,47 +55,76 @@ void FAssetAutoArrangeModule::PluginButtonClicked()
 
 void FAssetAutoArrangeModule::OnButtonClicked()
 {
-	UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
+    UAssetAutoArrangeSettings* Settings = GetMutableDefault<UAssetAutoArrangeSettings>();
 
-	UE_LOG(LogTemp, Warning, TEXT("Asset Auto-Arrange Settings:"));
-	for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Class: %s, Folder: %s, Color: %s"),
-			*ClassFolderPath.ClassType->GetName(),
-			*ClassFolderPath.FolderPath,
-			*ClassFolderPath.FolderColor.ToString());
+    UE_LOG(LogTemp, Warning, TEXT("Asset Auto-Arrange Settings:"));
+    for (const FFolderPath& ClassFolderPath : Settings->ClassFolderPaths)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Class: %s, Folder: %s, Color: %s"),
+            *ClassFolderPath.ClassType->GetName(),
+            *ClassFolderPath.FolderPath,
+            *ClassFolderPath.FolderColor.ToString());
 
-		FString DestinationFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ClassFolderPath.FolderPath);
+        FString DestinationFolder = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() / ClassFolderPath.FolderPath);
 
-		if (ClassFolderPath.FolderColor != FColor::Black)
-		{
-			FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
-			AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
+        // Create the destination folder if it doesn't exist
+        IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+        if (!PlatformFile.DirectoryExists(*DestinationFolder))
+        {
+            PlatformFile.CreateDirectoryTree(*DestinationFolder);
+            UE_LOG(LogTemp, Warning, TEXT("Created directory: %s"), *DestinationFolder);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Directory already exists: %s"), *DestinationFolder);
+        }
 
-			// Save the color information to the config file
-			GConfig->SetString(TEXT("PathColor"), *DestinationFolder, *LinearColor.ToString(), GEditorPerProjectIni);
+        if (ClassFolderPath.FolderColor != FColor::Black)
+        {
+            const FLinearColor LinearColor = ClassFolderPath.FolderColor.ReinterpretAsLinear();
+            AssetViewUtils::SetPathColor(*DestinationFolder, LinearColor);
 
-			// Print the original color and the linear color
-			UE_LOG(LogTemp, Warning, TEXT("Set color for directory: %s, Original Color: %s, Linear Color: %s"),
-				*DestinationFolder,
-				*ClassFolderPath.FolderColor.ToString(),
-				*LinearColor.ToString());
-		}
+            // Save the color information to the config file
+            GConfig->SetString(TEXT("PathColor"), *DestinationFolder, *LinearColor.ToString(), GEditorPerProjectIni);
 
-		// Create the destination folder if it doesn't exist
-		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
-		if (!PlatformFile.DirectoryExists(*DestinationFolder))
-		{
-			PlatformFile.CreateDirectoryTree(*DestinationFolder);
-			UE_LOG(LogTemp, Warning, TEXT("Created directory: %s"), *DestinationFolder);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Directory already exists: %s"), *DestinationFolder);
-		}
-	}
+            // Print the original color and the linear color
+            UE_LOG(LogTemp, Warning, TEXT("Set color for directory: %s, Original Color: %s, Linear Color: %s"),
+                *DestinationFolder,
+                *ClassFolderPath.FolderColor.ToString(),
+                *LinearColor.ToString());
+        }
+    }
 
-	UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
+    // Read the directories and subdirectories to find assets in the project's content directory
+    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+    TArray<FString> ContentPaths;
+    ContentPaths.Add(TEXT("/Game"));
+    AssetRegistryModule.Get().ScanPathsSynchronous(ContentPaths);
+
+    TArray<FAssetData> AssetDataList;
+    AssetRegistryModule.Get().GetAllAssets(AssetDataList);
+
+    UE_LOG(LogTemp, Warning, TEXT("Found %d assets in the project's content directory:"), AssetDataList.Num());
+    for (const FAssetData& AssetData : AssetDataList)
+    {
+        FString PackagePath = AssetData.PackagePath.ToString();
+        if (PackagePath.StartsWith(TEXT("/Game")))
+        {
+            UClass* AssetClass = AssetData.GetClass();
+            if (AssetClass)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Asset: %s, Class: %s"),
+                    *AssetData.GetFullName(),
+                    *AssetClass->GetName());
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Asset: %s, Class: Unknown"), *AssetData.GetFullName());
+            }
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Asset auto-arrange completed."));
 }
 
 
