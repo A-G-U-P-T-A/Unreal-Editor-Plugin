@@ -21,6 +21,10 @@
 		{
 			"Name": "AssetAutoArranger",
 			"Enabled": false
+		},
+		{
+			"Name": "AssetAutoArrange",
+			"Enabled": false
 		}
 	]
 }
